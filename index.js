@@ -47,21 +47,24 @@ async function main() {
       return;
     }
 
-    // Step 2: Fetch recent auctions
-    console.log('🔍 Fetching newest auctions from auctionet...');
-    const recentItemIds = await fetchRecentAuctions(CONFIG.maxAuctionsToCheck);
+    // Step 2: Load recent auction IDs (manually exported)
+    console.log('📂 Loading recent auction IDs...');
+    const recentItemIds = await loadRecentAuctions('./data/recent-auctions.json');
     console.log(`   Found ${recentItemIds.length} recent items\n`);
 
     if (recentItemIds.length === 0) {
-      console.log('⚠️  No new auctions found. This might be a scraping issue.');
+      console.log('⚠️  No recent auctions found!');
+      console.log('   Export recent items using tools/export-recent.html');
+      console.log('   This keeps us light on auctionet servers!\n');
       return;
     }
 
     // Step 3: Fetch full details for recent items
     console.log('📥 Fetching details for recent auctions...');
+    console.log('   (Being nice with 2-3 second delays between requests)\n');
     const { results: newItems, errors } = await fetchAuctionItemsBatch(
-      recentItemIds.slice(0, 50), // Start with first 50 for testing
-      1000 // 1 second delay between requests
+      recentItemIds.slice(0, 100), // Check first 100
+      2500 // 2.5 second delay - respectful!
     );
     console.log(`   Successfully fetched ${newItems.length} items`);
     if (errors.length > 0) {
@@ -135,6 +138,22 @@ async function loadFavorites(filepath) {
   } catch (error) {
     if (error.code === 'ENOENT') {
       return []; // File doesn't exist yet
+    }
+    throw error;
+  }
+}
+
+/**
+ * Load recent auction IDs from manual export
+ */
+async function loadRecentAuctions(filepath) {
+  try {
+    const data = await fs.readFile(filepath, 'utf-8');
+    const parsed = JSON.parse(data);
+    return parsed.itemIds || [];
+  } catch (error) {
+    if (error.code === 'ENOENT') {
+      return [];
     }
     throw error;
   }

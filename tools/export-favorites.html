@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Auctionet Favorites Exporter</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+      line-height: 1.6;
+    }
+    .container {
+      background: #f5f5f5;
+      border-radius: 8px;
+      padding: 30px;
+    }
+    h1 {
+      color: #2c3e50;
+    }
+    .step {
+      background: white;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 6px;
+      border-left: 4px solid #3498db;
+    }
+    .step h2 {
+      margin-top: 0;
+      color: #34495e;
+    }
+    code {
+      background: #ecf0f1;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: 'Monaco', 'Courier New', monospace;
+      font-size: 0.9em;
+    }
+    .bookmarklet {
+      background: #3498db;
+      color: white;
+      padding: 15px 20px;
+      border-radius: 6px;
+      text-decoration: none;
+      display: inline-block;
+      font-weight: 600;
+      margin: 20px 0;
+      cursor: move;
+    }
+    .bookmarklet:hover {
+      background: #2980b9;
+    }
+    .warning {
+      background: #fff3cd;
+      border-left: 4px solid #ffc107;
+      padding: 15px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+    button {
+      background: #27ae60;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      font-size: 1em;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    button:hover {
+      background: #229954;
+    }
+    #output {
+      margin-top: 20px;
+      padding: 15px;
+      background: #ecf0f1;
+      border-radius: 6px;
+      font-family: 'Monaco', 'Courier New', monospace;
+      font-size: 0.85em;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🐕 Auctionet Favorites Exporter</h1>
+    <p>This tool helps you export your auctionet watchlist to use with Auction Hound.</p>
+
+    <div class="step">
+      <h2>📋 Method 1: Browser Console (Recommended)</h2>
+      <ol>
+        <li>Go to <code>auctionet.com/en/my/watchlist</code> and log in</li>
+        <li>Click on the <strong>"Ended auctions"</strong> tab to see your archived favorites</li>
+        <li>Scroll down to load more items (repeat a few times to load all ~1000)</li>
+        <li>Open browser console (F12 or Cmd+Option+J on Mac)</li>
+        <li>Copy and paste this script:</li>
+      </ol>
+
+      <pre style="background: #2c3e50; color: #ecf0f1; padding: 15px; border-radius: 4px; overflow-x: auto;"><code>// Extract all favorite items from the page
+const items = [];
+const itemElements = document.querySelectorAll('a[href*="/en/"]');
+
+itemElements.forEach(elem => {
+  const href = elem.getAttribute('href');
+  const match = href?.match(/\/en\/(\d+)-(.+)/);
+
+  if (match && match[1]) {
+    const itemId = match[1];
+    const title = elem.textContent.trim() || match[2];
+
+    // Get image
+    const img = elem.querySelector('img') || elem.closest('tr, div')?.querySelector('img');
+    const imageUrl = img?.src || img?.getAttribute('data-src') || '';
+
+    items.push({
+      itemId,
+      title,
+      url: `https://auctionet.com${href}`,
+      images: imageUrl ? [imageUrl] : [],
+      exportedAt: new Date().toISOString()
+    });
+  }
+});
+
+// Remove duplicates
+const unique = Array.from(new Map(items.map(item => [item.itemId, item])).values());
+
+// Download as JSON
+const dataStr = JSON.stringify(unique, null, 2);
+const dataBlob = new Blob([dataStr], { type: 'application/json' });
+const url = URL.createObjectURL(dataBlob);
+const link = document.createElement('a');
+link.href = url;
+link.download = 'favorites.json';
+link.click();
+
+console.log(`✅ Exported ${unique.length} favorites!`);
+</code></pre>
+
+      <p>This will download a <code>favorites.json</code> file.</p>
+      <p>Move it to: <code>auction-hound/data/favorites.json</code></p>
+    </div>
+
+    <div class="step">
+      <h2>🔖 Method 2: Bookmarklet (Alternative)</h2>
+      <p>Drag this button to your bookmarks bar:</p>
+
+      <a href="javascript:(function(){const items=[];const links=document.querySelectorAll('a[href*=\"/en/\"]');links.forEach(elem=>{const href=elem.getAttribute('href');const match=href?.match(/\/en\/(\d+)-(.+)/);if(match&&match[1]){const img=elem.querySelector('img')||elem.closest('tr, div')?.querySelector('img');items.push({itemId:match[1],title:elem.textContent.trim()||match[2],url:`https://auctionet.com${href}`,images:img?([(img.src||img.getAttribute('data-src'))].filter(Boolean)):[],exportedAt:new Date().toISOString()});}});const unique=Array.from(new Map(items.map(item=>[item.itemId,item])).values());const dataStr=JSON.stringify(unique,null,2);const dataBlob=new Blob([dataStr],{type:'application/json'});const url=URL.createObjectURL(dataBlob);const link=document.createElement('a');link.href=url;link.download='favorites.json';link.click();alert(`Exported ${unique.length} favorites!`);})();" class="bookmarklet">📥 Export Auctionet Favorites</a>
+
+      <p>Then:</p>
+      <ol>
+        <li>Go to your watchlist page (logged in)</li>
+        <li>Load all items by scrolling</li>
+        <li>Click the bookmarklet</li>
+        <li>Save the downloaded file to <code>auction-hound/data/favorites.json</code></li>
+      </ol>
+    </div>
+
+    <div class="warning">
+      <strong>⚠️ Important:</strong> Make sure to load ALL your favorites by scrolling down on the "Ended auctions" tab before running the export. The script only captures items currently visible on the page.
+    </div>
+
+    <div class="step">
+      <h2>✅ After Export</h2>
+      <p>Once you have <code>favorites.json</code> in the <code>data</code> folder:</p>
+      <ol>
+        <li>Run <code>npm start</code> to check for similar items</li>
+        <li>Set up email credentials in <code>.env</code></li>
+        <li>Schedule it to run every 3 days</li>
+      </ol>
+    </div>
+  </div>
+
+  <div id="output"></div>
+
+  <script>
+    // In-page test function
+    function testExtraction() {
+      const output = document.getElementById('output');
+      output.innerHTML = 'This is a demo page. To actually export your favorites, use this tool on auctionet.com/en/my/watchlist';
+    }
+  </script>
+</body>
+</html>
